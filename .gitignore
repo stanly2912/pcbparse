@@ -43,6 +43,7 @@
 !/docker/Dockerfile
 !/docker/Dockerfile.cpu
 !/docker/agent_system
+!/docker/verify_wheelhouse.py
 
 /data_tools/*
 !/data_tools/*.py

@@ -57,7 +57,30 @@ python -m pcbparse.cli infer `
 python -m pcbparse.submission_agent -input ./input -output ./output
 ```
 
-竞赛入口写出 `output/final_results/<case_id>_Pred.json` 和 `output/decision_log.json`。Linux 容器入口为 `/submission/agent_system`。构建容器前需备齐模型锁指定的 `models/releases/v8-portable/`；官方镜像提供 CUDA 匹配的 PyTorch，`requirements.edarace.txt` 不替换其 torch。
+竞赛入口写出 `output/final_results/<case_id>_Pred.json` 和 `output/decision_log.json`。Linux 容器入口为 `/submission/run.sh`，同时保留兼容入口 `/submission/agent_system`。构建容器前需备齐模型锁指定的 `models/releases/v8-portable/`；官方镜像提供 CUDA 匹配的 PyTorch，`requirements.edarace.txt` 不替换其 torch。
+
+提交镜像从包内安装固定版本的 Linux wheels，并校验其哈希，构建时禁止访问包索引。先在联网准备环境中下载依赖：
+
+```powershell
+python -m pip download --index-url https://pypi.org/simple `
+  --dest ./work/edarace-wheels --requirement requirements.edarace.txt `
+  --only-binary=:all: --no-deps --python-version 3.12 --implementation cp `
+  --abi cp312 --abi abi3 --abi none `
+  --platform manylinux_2_28_x86_64 --platform manylinux_2_27_x86_64 `
+  --platform manylinux2014_x86_64 --platform manylinux_2_17_x86_64
+
+python -m data_tools.edarace_bundle --wheelhouse ./work/edarace-wheels `
+  --output ./outputs/submissions/new-offline-bundle
+```
+
+打包工具核对 PyPI 官方文件哈希、生产模型哈希，使用当前源码预构建项目 wheel。准备环境需已安装 `setuptools>=69` 和 `wheel`；打包过程会访问 PyPI 发布信息。ZIP 中不包含数据集和离线评测代码。使用生成目录中的 `package` 作为 Docker 构建上下文，并在禁止联网时验证镜像：
+
+```powershell
+docker build --network=none --pull=false --progress=plain `
+  -t pcbparse:edarace-offline ./outputs/submissions/new-offline-bundle/package
+```
+
+镜像构建通过后，按官方入口挂载真实 PNG 输入和输出目录进行推理验证。打包成功不会自动标记完整 Docker 构建或推理已通过。
 
 ## 训练与工作区验证
 
