@@ -44,6 +44,10 @@
     "component_unique_margin": 0.0,
     "pin_min_score": 0.3,
     "pin_unique_margin": 0.0,
+    "pin_net_ranker": {
+      "enabled": true,
+      "resource": "pin_net_ranker_v1.json"
+    },
     "netlabel_min_text_score": 0.5,
     "pin_name_row_penalty": 0.22
   },

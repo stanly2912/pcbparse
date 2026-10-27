@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from pcbparse.association import associate_ocr
+from pcbparse.association.pin_net_ranker import apply_pin_net_ranker
 from pcbparse.graph.palette_wire import apply_palette_wire_filter, prepare_palette_wire
 from pcbparse.graph.internal_wire_filter import filter_internal_wire_segments
 from pcbparse.graph.physical import (
@@ -280,6 +281,15 @@ def _infer_one(
 
     graph_config = config.get("graph", {})
     association_config = config.get("association", {})
+    pin_net_ranker_config = association_config.get("pin_net_ranker", {})
+    if not isinstance(pin_net_ranker_config, dict):
+        raise ValueError("association.pin_net_ranker must be an object")
+    pin_net_ranker_enabled = pin_net_ranker_config.get("enabled", False)
+    if type(pin_net_ranker_enabled) is not bool:
+        raise ValueError("association.pin_net_ranker.enabled must be a boolean")
+    pin_net_ranker_resource = str(
+        pin_net_ranker_config.get("resource", "pin_net_ranker_v1.json")
+    )
     internal_wire_filter_enabled = graph_config.get("internal_wire_filter_enabled", False)
     if type(internal_wire_filter_enabled) is not bool:
         raise ValueError("graph.internal_wire_filter_enabled must be a boolean")
@@ -433,6 +443,14 @@ def _infer_one(
             }
             for decision in snap_decisions
         ]
+        if pin_net_ranker_enabled:
+            ranker_report = apply_pin_net_ranker(
+                ir, resource_name=pin_net_ranker_resource
+            )
+            trace["message"] = (
+                trace.get("message", "")
+                + f"pin_net_ranker_changed={ranker_report['changed_pins']}"
+            )
         ir.state = IRState.GRAPHED
         trace["object_count"] = len(ir.physical_nets)
         if internal_wire_filter_enabled:
